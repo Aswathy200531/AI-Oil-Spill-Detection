@@ -14,26 +14,31 @@ model = load_model()
 IMG_SIZE = 256
 
 def preprocess_image(image):
+    image = image.convert("RGB")   # ⭐ convert RGBA → RGB
     image = image.resize((IMG_SIZE, IMG_SIZE))
-    image = np.array(image)/255.0
+    image = np.array(image) / 255.0
     image = np.expand_dims(image, axis=0)
     return image
 
 def predict_mask(image):
     img = preprocess_image(image)
-    prediction = model.predict(img)[0]
-    mask = (prediction > 0.5).astype(np.uint8)
-    return mask
+    prediction = model.predict(img)[0]   # raw probabilities
+    mask = (prediction > 0.7).astype(np.uint8)
+
+    return prediction, mask
 
 def overlay_mask(image, mask):
+
+    image = image.convert("RGB")
     image = np.array(image.resize((IMG_SIZE, IMG_SIZE)))
+
     overlay = image.copy()
 
-    # Highlight oil spill in red
-    overlay[mask[:,:,0] == 1] = [255,0,0]
+    red = np.array([255,0,0])
+
+    overlay[mask[:,:,0] == 1] = (0.6 * red + 0.4 * overlay[mask[:,:,0] == 1]).astype(np.uint8)
 
     return overlay
-
 
 uploaded_file = st.file_uploader("Upload Satellite Image", type=["png","jpg","jpeg"])
 
@@ -44,7 +49,11 @@ if uploaded_file is not None:
     st.subheader("Uploaded Satellite Image")
     st.image(image)
 
-    mask = predict_mask(image)
+    prediction, mask = predict_mask(image)
+
+     # ⭐ ADD HEATMAP HERE
+    st.subheader("Raw Prediction Heatmap")
+    st.image(prediction[:,:,0], clamp=True)
 
     st.subheader("Predicted Oil Spill Mask")
     st.image(mask[:,:,0]*255)
@@ -55,7 +64,7 @@ if uploaded_file is not None:
     st.image(overlay)
 
     # Calculate statistics
-    oil_pixels = np.sum(mask)
+    oil_pixels = np.sum(mask[:,:,0])
     total_pixels = IMG_SIZE * IMG_SIZE
 
     oil_percentage = (oil_pixels / total_pixels) * 100
