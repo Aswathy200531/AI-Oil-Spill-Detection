@@ -8,9 +8,11 @@ st.title("Satellite Oil Spill Detection System")
 # Load trained model
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("oil_spill_unet.h5", compile=False)
+    model = tf.keras.models.load_model("oil_spill_unet.h5", compile=False)
+    return model
 
-model = load_model()
+with st.spinner("Loading AI model..."):
+    model = load_model()
 IMG_SIZE = 256
 
 def preprocess_image(image):
